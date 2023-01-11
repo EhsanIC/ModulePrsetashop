@@ -1,6 +1,9 @@
+<div id="mymodule" style="background-color:{$MyModuleColor}">
+    <h3>{$MyModuleTitle}</h3>
+    <p>{$MyModuleDescription nofilter}</p>
+</div>
 
-
-    <div class="block" id="mymodule_block_home">
+    {*<div class="block" id="mymodule_block_home">
 
         <h4>{l s='welcom!' mod='mymodule'}</h4>
 
@@ -18,7 +21,7 @@
                 <li><a href="{$my_module_link}" title="click this link">Click Me!</a></li>
             </ul>
         </div>
-    </div>
+    </div>*}
 
 
 

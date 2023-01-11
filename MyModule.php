@@ -1,15 +1,21 @@
 <?php
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
 class MyModule extends Module
 {
+    public $fileds = [
+        'MyModuleActive',
+        'MyModuleTitle',//
+        'MyModulePosition',
+        'MyModuleColor',//
+        'MyModuleDescription',//
+    ];
 
     public function __construct()
     {
-        $this->name = 'MyModule';
+        $this->name = 'mymodule';
         $this->tab = 'other';
         $this->version = '1.0.0';
         $this->author = 'me';
@@ -43,14 +49,11 @@ class MyModule extends Module
 
         return (parent::install()
             && $this->registerHook('displayLeftColumn')
-            && $this->registerHook('displayHeader')
-            && $this->regsiterHook('displayHome')
-            && $this->registerHook('actionFrontControllerSetMedia')
-            && Configuration::updateValue('MyModule', 'my friend')
+            && $this->registerHook('displayTop')
+            && $this->registerHook('displayHome')
+            && Configuration::updateValue('MyModuleTitle', 'my friend')
         );
     }
-
-
 
     public function Uninstall()
     {
@@ -62,27 +65,27 @@ class MyModule extends Module
     public function getContent()
     {
         $output = '';
-
         if (Tools::isSubmit('submit' . $this->name)) {
 
-            $configValue = (string) Tools::getValue('MYMODULE_CONFIG');
+            $configValue = (string) Tools::getValue('MyModuleTitle');
 
             if (empty($configValue) || !Validate::isGenericName($configValue)) {
-
                 $output = $this->displayError($this->l('invalid configuration Value'));
             } else {
+                // Load current value into the form
+                foreach ($this->fileds as $filed) {
+                    Configuration::updateValue($filed, Tools::getValue($filed), true);
+                }
 
-                Configuration::updateValue('MYMODULE_CONFIG', $configValue);
                 $output = $this->displayConfirmation($this->l('setting updated'));
             }
         }
 
-        return $output . $this->displayForm();
+        return  $output . $this->displayForm();
     }
 
     public function displayForm()
     {
-
         $form = [
             'form' => [
                 'legend' => [
@@ -90,12 +93,61 @@ class MyModule extends Module
                 ],
                 'input' => [
                     [
+                        'type' => 'switch',
+                        'label' => 'فعال باشد؟',
+                        'name' => 'MyModuleActive',
+                        'values' => [
+                            [
+                                'id' => 'type_switch_on',
+                                'value' => 1,
+                            ],
+                            [
+                                'id' => 'type_switch_off',
+                                'value' => 0,
+                            ],
+                        ],
+                    ],
+                    [
                         'type' => 'text',
                         'label' => 'configuration',
-                        'name' => 'MYMODULE_CONFIG',
+                        'name' => 'MyModuleTitle',
                         'size' => 20,
                         'required' => true,
-                    ]
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => 'مکان',
+                        'name' => 'MyModulePosition',
+                        'options' => [
+                            'query' => [
+                                [
+                                    'name' 	=> 'صفحه اصلی',
+                                    'hook'	=> 'displayHome',
+                                ],
+                                [
+                                    'name' 	=> 'ستون سمت چپ',
+                                    'hook'	=> 'displayLeftColumn',
+                                ],
+                                [
+                                    'name' 	=> 'هدر',
+                                    'hook'	=> 'displayTop',
+                                ],
+                            ],
+                            'id' => 'hook',
+                            'name' => 'name',
+                        ],
+                    ],
+                    [
+                        'type' => 'color',
+                        'label' => 'input color',
+                        'name' => 'MyModuleColor',
+                    ],
+                    [
+                        'type' => 'textarea',
+                        'label' => 'text area with rich text editor',
+                        'name' => 'MyModuleDescription',
+                        'autoload_rte' => true,
+                    ],
                 ],
                 'submit' => [
                     'title' => $this->l('save'),
@@ -103,9 +155,6 @@ class MyModule extends Module
                 ]
             ],
         ];
-
-
-
 
         $helper = new HelperForm();
 
@@ -120,29 +169,49 @@ class MyModule extends Module
         $helper->default_form_language = (int) Configuration::get('PS_LANG_DEFAULT');
 
         // Load current value into the form
-        $helper->fields_value['MYMODULE_CONFIG'] = Tools::getValue('MYMODULE_CONFIG', Configuration::get('MYMODULE_CONFIG'));
+        foreach ($this->fileds as $filed) {
+            $helper->fields_value[$filed] = Tools::getValue($filed, Configuration::get($filed));
+        }
 
         return $helper->generateForm([$form]);
     }
 
-    public function hookDisplayLeftColumn($params)
-    {
-        $this->context()->smarty()->assign([
-            'my_module_name' => Configuration::get('MYMODULE'),
-            'my_module_link' => $this->context()->link()->geLinkModule('mymodule', 'display')
-        ]);
+    public function displayBlock($params, $hookName = false){
+        if (empty(Configuration::get('MyModuleActive'))) {
+            return false;
+        }
 
+        if (Configuration::get('MyModulePosition') != $hookName) {
+            return false;
+        }
+
+        // get
+        $vars = Configuration::getMultiple($this->fileds);
+
+        // process
+
+        // display smarty
+        $this->context->smarty->assign($vars);
         return $this->display(__FILE__, 'mymodule.tpl');
+    }
+
+    public function hookDisplayHome($params) {
+        return $this->displayBlock($params, 'displayHome');
+    }
+
+    public function hookDisplayLeftColumn($params) {
+        return $this->displayBlock($params, 'displayLeftColumn');
     }
 
     public function hookDisplayRightColumn($params)
     {
-        return $this->hookDisplayLeftColumn($params);
+        return $this->displayBlock($params, 'displayRightColumn');
     }
+
+
 
     public function hookActionFrontControllerSetMedia()
     {
-
         $this->context->controller->registerStylesheet(
             'mymodule-style',
             $this->_path . 'views/css/css.css',
@@ -165,10 +234,10 @@ class MyModule extends Module
         /**
         * متغییری که به tpl ارسال میشه از کجا میاد
         */
-    // public function hookDisplayHome($params) 
+    // public function hookDisplayHome($params)
     // {
     //     $this->context->smarty->assign([
-    //         'test' => Counfiguration::get('MYMODULE_CONFIG')
+    //         'test' => Counfiguration::get('MyModuleTitle')
     //     ]);
 
     //     return $this->display(__FILE__,'test.tpl');
